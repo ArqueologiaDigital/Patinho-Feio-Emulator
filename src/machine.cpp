@@ -1,10 +1,14 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <bitset>
 #include "state.h"
 #include "machine.h"
+#include "debug.h"
 
 using namespace std;
+
+#define DEBUG 0
 
 // Panel connections:
 extern bool led_ACC[8]; // 8-bit "Acumulador" = Accumulator Register
@@ -824,8 +828,8 @@ void shift_rotate_instructions()
     // TODO: Implement-me!
 }
 /*
-###################### END OF CPU INSTRUCTIONS IMPLEMENTATION ######################
-*/
+ * ############################## END ##################################
+ */
 
 void load_example_hardcoded_program()
 {
@@ -842,8 +846,8 @@ void load_example_hardcoded_program()
     RAM[0x0B] = 0x80;
     RAM[0x0C] = 0xca; // 00C: CA 21  SAL /A1             // channel A (teletype), function 1 (check READY flag)
     RAM[0x0D] = 0x21;
-    RAM[0x0E] = 0x00; // 00E: 00 0C  PLA /00C            // Jump back to previous instruction (unless the teletype READY
-    RAM[0x0F] = 0x0c; //   flag causes this instruction to be skipped).
+    RAM[0x0E] = 0x00; // 00E: 00 0C  PLA /00C            // Jump back to previous instruction (unless the teletype READY flag causes this instruction to be skipped).
+    RAM[0x0F] = 0x0c;
     RAM[0x10] = 0x9e; // 010: 9E     TRI                 // TRI = Exchange values of IND reg and ACC reg.
     RAM[0x11] = 0x85; // 011: 85     INC                 // Increment ACC
     RAM[0x12] = 0x20; // 012: 20 00  ARM (IDX)           // Store ACC value into the IDX register.
@@ -853,9 +857,10 @@ void load_example_hardcoded_program()
     RAM[0x16] = 0xA0; // 016: A0 08  PLAN /008           // Conditional jump to /008 (jumps if ACC is negative)
     RAM[0x17] = 0x08;
     RAM[0x18] = 0x9D; // 018: 9D     PARE                // Halt the CPU. Can be restarted by manually pushing the PARTIDA (startup) panel button.
-    RAM[0x19] = 0x00; // 019: 00 06  PLA /006            // If you restart the CPU, this is the next instruction, which jumps straight back to the
-    RAM[0x1A] = 0x06; //   routine entry point, effectively causing the whole program to run once again.
-    RAM[0x1B] = 0xF2; // 01B: F2     DB -14              // This is the 2's complement for -len(string)
+    RAM[0x19] = 0x00; // 019: 00 06  PLA /006            // If you restart the CPU, this is the next instruction, which jumps straight back to the routine entry point, effectively causing the whole program to run once again.
+    RAM[0x1A] = 0x06;
+    // RAM[0x1B] = 0xF2; // 01B: F2     DB -14              // This is the 2's complement for -len(string)
+    RAM[0x1B] = 0xEF; // 01B: 0E     DB -14              // This is the 2's complement for -len(string)
     RAM[0x1C] = 'P';  // 01C: "PATINHO FEIO\n"           // This is the string.
     RAM[0x1D] = 'A';
     RAM[0x1E] = 'T';
@@ -868,13 +873,19 @@ void load_example_hardcoded_program()
     RAM[0x25] = 'E';
     RAM[0x26] = 'I';
     RAM[0x27] = 'O';
-    RAM[0x28] = 0x0D;
-    RAM[0x29] = 0x0A;
+    RAM[0x28] = '!';
+    RAM[0x29] = '!';
+    RAM[0x2A] = '!';
+    RAM[0x2B] = 0x0D;
+    RAM[0x2C] = 0x0A;
 
     // Entry point:
     CI(0x06);
 }
 
+/*
+ * ###################### PRINTING TO THE TELETYPE #####################
+ */
 void printer_writeByte(char c)
 {
     cout << c;
@@ -916,7 +927,9 @@ void printer_writeString(char *str)
         printer_writeByte(*ptr);
     }
 }
-
+/*
+ * ################################ END ##################################
+ */
 void reset_CPU()
 {
     VAI_UM(false);
@@ -994,6 +1007,10 @@ void run_one_instruction()
 
     if (indirect_addressing)
         scheduled_IND_bit_reset = true;
+
+#if DEBUG
+    printf("Executing instruction: %s\n", Debug_get_mnemonic(opcode));
+#endif
 
     // DEBUG
     // printf("CI: %04x OPCODE: %04x, Mascarado: %04x \n", _CI, opcode, opcode & 0xF0);
@@ -1194,10 +1211,14 @@ void read_inputs()
     {
         if (btn_address[col].state)
         {
-            dados |= (1 << col);
+            dados |= 1 << col;
         }
     }
     DADOS_DO_PAINEL(dados);
+    // Print HEX value of dados to the printer
+    // printf("dados: %04x\n", dados);
+    // Print Binary value of dados to the printer
+    // printf("dados: %s\n", std::bitset<12>(dados).to_string().c_str());
 
     // when a mode button is pressed, set the corresponding mode:
     for (col = 0; col < 6; col++)

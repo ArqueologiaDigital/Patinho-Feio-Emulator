@@ -95,3 +95,118 @@ void Debug_destroy()
     TTF_CloseFont(font);
     TTF_Quit();
 }
+
+const char *Debug_get_mnemonic(int opcode)
+{
+    // Switch based on the opcode
+    switch (opcode)
+    {
+    case 0x80:
+        return "LIMPO";
+    case 0x81:
+        return "UM";
+    case 0x82:
+        return "CMP1";
+    case 0x83:
+        return "CMP2";
+    case 0x84:
+        return "LIM";
+    case 0x85:
+        return "INC";
+    case 0x86:
+        return "UNEG";
+    case 0x87:
+        return "LIMP1";
+    case 0x88:
+        return "PNL_0";
+    case 0x89:
+        return "PNL_1";
+    case 0x8A:
+        return "PNL_2";
+    case 0x8B:
+        return "PNL_3";
+    case 0x8C:
+        return "PNL_4";
+    case 0x8D:
+        return "PNL_5";
+    case 0x8E:
+        return "PNL_6";
+    case 0x8F:
+        return "PNL_7";
+    case 0x90:
+        return "ST_0";
+    case 0x91:
+        return "STM_0";
+    case 0x92:
+        return "ST_1";
+    case 0x93:
+        return "STM_1";
+    case 0x94:
+        return "SV_0";
+    case 0x95:
+        return "SVM_0";
+    case 0x96:
+        return "SV_1";
+    case 0x97:
+        return "SVM_1";
+    case 0x98:
+        return "PUL";
+    case 0x99:
+        return "TRE";
+    case 0x9A:
+        return "INIB";
+    case 0x9B:
+        return "PERM";
+    case 0x9C:
+        return "ESP";
+    case 0x9D:
+        return "PARE";
+    case 0x9E:
+        return "TRI";
+    case 0x9F:
+        return "IND";
+    case 0xD1:
+        return "SH/RT/XOR/NAND";
+    case 0xD2:
+        return "XOR";
+    case 0xD4:
+        return "NAND";
+    case 0xD8:
+        return "SOMI";
+    case 0xDA:
+        return "CARI";
+    default:
+        // Switch based on the opcode's most significant nibble
+        switch (opcode & 0xF0)
+        {
+        case 0x00:
+            return "PLA";
+        case 0x10:
+            return "PLAX";
+        case 0x20:
+            return "ARM";
+        case 0x30:
+            return "ARMX";
+        case 0x40:
+            return "CAR";
+        case 0x50:
+            return "CARX";
+        case 0x60:
+            return "SOM";
+        case 0x70:
+            return "SOMX";
+        case 0xA0:
+            return "PLAN";
+        case 0xB0:
+            return "PLAZ";
+        case 0xC0:
+            return "IO";
+        case 0xE0:
+            return "SUS";
+        case 0xF0:
+            return "PUG";
+        default:
+            return "PARADO";
+        }
+    }
+}

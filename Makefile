@@ -1,7 +1,7 @@
-OBJS = emulator
+OBJS = ./build/emulator
 CFLAGS = -Wall -g -std=c++11
 CC = g++
-INCLUDE = -IC:\DEV\SDL2\x86_64-w64-mingw32\include
+INCLUDE = -IC:\DEV\SDL2\x86_64-w64-mingw32\include -I./include
 LIB = -LC:\DEV\SDL2\x86_64-w64-mingw32\lib
 FLAGS = -lmingw32 -lSDL2main -lSDL2
 

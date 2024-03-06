@@ -1,6 +1,6 @@
 #include "state.h"
-#define byte unsigned char
 
+// Panel connections:
 extern bool led_ACC[8]; // 8-bit "Acumulador" = Accumulator Register
 extern bool led_RD[8];  // 8-bit "Registrador de Dados" = Data Register
 extern bool led_RI[8];  // 8-bit "Registrador de Instrução" = Instruction Register
@@ -14,12 +14,11 @@ extern button_t btn_address[12];
 extern button_t btn_mode[6];
 
 // CPU registers:
-
 #define INDEX_REG 0
 #define EXTENSION_REG 1
 #define RAM_SIZE 256
 
-byte RAM[RAM_SIZE];
+unsigned char RAM[RAM_SIZE];
 bool _VAI_UM;
 bool _TRANSBORDO;
 
@@ -190,7 +189,7 @@ void reset_CPU()
     indirect_addressing = false;
     scheduled_IND_bit_reset = false;
 }
-int inc = 0;
+
 void read_inputs()
 {
     int col;
@@ -220,12 +219,10 @@ void read_inputs()
     memoria_protegida = buttons[1].state;
 
     // // botão "PREPARAÇÂO":
-    if (inc == 0)
-    {
-        reset_CPU();
-    }
-
-    inc++;
+    // if (BUTTON)
+    // {
+    //     reset_CPU();
+    // }
 
     // // botão "ESPERA":
     // if (inputs[1][3])

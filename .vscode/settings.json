@@ -1,5 +1,5 @@
 {
-    "C_Cpp.default.compilerPath": "C:\\ProgramData\\mingw64\\mingw64\\bingcc.exe",
+    "C_Cpp.default.compilerPath": "C:\\ProgramData\\mingw64\\mingw64\\bin\\gcc.exe",
     "files.associations": {
         "cstdlib": "c",
         "ostream": "cpp",
@@ -61,4 +61,5 @@
         "variant": "cpp"
     },
     "editor.formatOnSave": true,
+    "cSpell.language": "en,pt-BR",
 }

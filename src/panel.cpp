@@ -8,6 +8,7 @@
 SDL_Window *window;
 SDL_Renderer *renderer;
 SDL_Event windowEvent;
+
 const int WIDTH = 620;
 const int HEIGHT = 853;
 
@@ -106,7 +107,6 @@ void Panel_init()
     SDL_Init(SDL_INIT_VIDEO);
 
     window = SDL_CreateWindow("Hello World", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WIDTH, HEIGHT, SDL_WINDOW_SHOWN);
-
     if (window == NULL)
     {
         std::cout << "Window could not be created! SDL_Error: " << SDL_GetError() << std::endl;
@@ -114,7 +114,6 @@ void Panel_init()
     }
 
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-
     if (renderer == NULL)
     {
         std::cout << "Renderer could not be created! SDL_Error: " << SDL_GetError() << std::endl;
@@ -151,7 +150,7 @@ void Panel_loop()
         Panel_8BIT(0, 5, led_ACC);  // Acumulador
         Panel_12BIT(10, 5, led_CI); // Endereço de instrução
 
-        Panel_8BIT(0, 10, led_RI); // Codigo de instrução
+        Panel_8BIT(0, 10, led_RI); // Código de instrução
 
         Panel_8BIT(0, 15, led_RD);                // Dados da Memória
         Panel_12BIT(10, 15, led_DADOS_DO_PAINEL); // Dados do Painel

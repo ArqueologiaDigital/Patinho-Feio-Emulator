@@ -1,5 +1,6 @@
 #include "state.h"
 #include "panel.h"
+#include "machine.h"
 
 bool led_ACC[8]; // 8-bit "Acumulador" = Accumulator Register
 bool led_RD[8];  // 8-bit "Registrador de Dados" = Data Register
@@ -15,3 +16,5 @@ bool led_STATE[2]; // "Estado" = State (parado e externo)
 button_t buttons[QTD_BUTTONS_GENERAL];
 button_t btn_address[QTD_BUTTONS_ADDRESS];
 button_t btn_mode[QTD_BUTTONS_MODE];
+
+byte RAM[RAM_SIZE];

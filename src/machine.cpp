@@ -4,7 +4,6 @@
 #include "state.h"
 #include "machine.h"
 
-#define byte unsigned char
 using namespace std;
 
 // Panel connections:
@@ -54,17 +53,16 @@ void TeleType::write(uint8_t value)
     this->registrador = value;
 
     if (value == '\n')
+    {
         printer_writeByte('\r');
+    }
 
     printer_writeByte(value);
 }
 
 // CPU registers:
-#define INDEX_REG 0
-#define EXTENSION_REG 1
-#define RAM_SIZE 256
 
-byte RAM[RAM_SIZE];
+extern byte RAM[RAM_SIZE];
 bool _VAI_UM;
 bool _TRANSBORDO;
 
@@ -985,9 +983,8 @@ void partida()
 
 void run_one_instruction()
 {
-    unsigned int tmp;
-    byte value, channel, function;
     opcode = read_ram(_CI);
+
     RI(opcode); // para mostrar o opcode no painel
 
     if (scheduled_IND_bit_reset)

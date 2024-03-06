@@ -266,28 +266,6 @@ void Panel_LEDBIT(int posX, int posY, int bits, bool *led_panel, float dist_betw
     }
 }
 
-// Function to render the 12 bit panel
-// void Panel_12BIT(int posX, int posY, bool *led_panel)
-// {
-//     // Draw the first panel
-//     for (int i = 0; i < 12; i++)
-//     {
-//         if (led_panel[i])
-//         {
-//             SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-//         }
-//         else
-//         {
-//             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-//         }
-//         float pos_start_x = 24.9;
-//         float dist_between = 20.6;
-
-//         // Horizontal line leds
-//         DrawCircle(renderer, (posX * pos_start_x) + (i * dist_between), posY, 6, true);
-//     }
-// }
-
 // Function to render the button
 void Panel_createButton(int posX, int posY, int id, int type, button_t *btn)
 {

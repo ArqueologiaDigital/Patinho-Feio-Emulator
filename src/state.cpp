@@ -9,6 +9,9 @@ bool led_RE[12];              // 12-bit "Registrador de Endereço" = Address Reg
 bool led_CI[12];              // 12-bit "Contador de Instrução" = Instruction Counter
 bool led_DADOS_DO_PAINEL[12]; // 12-bit of data provided by the user via panel toggle-switches
 
-button_t buttons[2];
-button_t btn_address[12];
-button_t btn_mode[6];
+bool led_FASE[7];  // "Fase" = Phase
+bool led_STATE[2]; // "Estado" = State (parado e externo)
+
+button_t buttons[QTD_BUTTONS_GENERAL];
+button_t btn_address[QTD_BUTTONS_ADDRESS];
+button_t btn_mode[QTD_BUTTONS_MODE];

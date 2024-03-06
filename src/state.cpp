@@ -13,7 +13,7 @@ bool led_DADOS_DO_PAINEL[12]; // 12-bit of data provided by the user via panel t
 bool led_FASE[7];  // "Fase" = Phase
 bool led_STATE[2]; // "Estado" = State (parado e externo)
 
-button_t buttons[QTD_BUTTONS_GENERAL];
+button_t buttons[QTD_BUTTONS_GENERAL]; // 0 - Endereçamento, 1 - Memoria, 2 - Espera, 3 - Interrupção, 4 - Partida , 5 - Preparação
 button_t btn_address[QTD_BUTTONS_ADDRESS];
 button_t btn_mode[QTD_BUTTONS_MODE];
 

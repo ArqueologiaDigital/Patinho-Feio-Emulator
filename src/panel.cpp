@@ -26,7 +26,7 @@ extern bool led_DADOS_DO_PAINEL[12]; // 12-bit of data provided by the user via 
 extern bool led_FASE[7];  // "Fase" = Phase
 extern bool led_STATE[2]; // "Estado" = State (parado e externo)
 
-extern button_t buttons[QTD_BUTTONS_GENERAL]; // 0 - Endereçamento, 1 - Memoria, 2 - Espera, 3 - Interrupção, 4 - Partida , 5 - Preparação
+extern button_t buttons[QTD_BUTTONS_GENERAL];
 extern button_t btn_address[QTD_BUTTONS_ADDRESS];
 extern button_t btn_mode[QTD_BUTTONS_MODE];
 

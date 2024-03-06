@@ -240,7 +240,9 @@ unsigned int compute_effective_address(unsigned int addr)
     {
         addr = (read_ram(addr + 1) << 8) | read_ram(addr);
         if (addr & 0x1000)
+        {
             return compute_effective_address(addr & 0xFFF);
+        }
     }
     return addr;
 }
@@ -993,6 +995,9 @@ void run_one_instruction()
     if (indirect_addressing)
         scheduled_IND_bit_reset = true;
 
+    // DEBUG
+    // printf("CI: %04x OPCODE: %04x, Mascarado: %04x \n", _CI, opcode, opcode & 0xF0);
+
     inc_CI();
 
     switch (opcode)
@@ -1203,9 +1208,22 @@ void read_inputs()
         }
     }
 
+    if (buttons[0].state)
+    {
+
+        enderecamento_sequencial = !enderecamento_sequencial;
+        buttons[0].glowing = enderecamento_sequencial;
+    }
+
+    if (buttons[1].state)
+    {
+        memoria_protegida = !memoria_protegida;
+        buttons[1].glowing = memoria_protegida;
+    }
+
     // chaves de modos de memória:
-    enderecamento_sequencial = buttons[0].state;
-    memoria_protegida = buttons[1].state;
+    // enderecamento_sequencial = buttons[0].state;
+    // memoria_protegida = buttons[1].state;
 
     // // botão "PREPARAÇÂO":
     if (buttons[5].state)

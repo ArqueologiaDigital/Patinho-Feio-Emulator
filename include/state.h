@@ -1,5 +1,7 @@
 #pragma once
 
+#define byte unsigned char
+
 #include "panel.h"
 
 #define QTD_BUTTONS_GENERAL 6

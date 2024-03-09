@@ -1,8 +1,6 @@
 // Pragma once to avoid multiple inclusion
 #pragma once
 
-#define byte unsigned char
-
 #define INDEX_REG 0
 #define EXTENSION_REG 1
 #define RAM_SIZE 256

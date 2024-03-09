@@ -2,6 +2,8 @@
 #include "panel.h"
 #include "machine.h"
 
+bool running = true;
+
 bool led_ACC[8]; // 8-bit "Acumulador" = Accumulator Register
 bool led_RD[8];  // 8-bit "Registrador de Dados" = Data Register
 bool led_RI[8];  // 8-bit "Registrador de Instrução" = Instruction Register

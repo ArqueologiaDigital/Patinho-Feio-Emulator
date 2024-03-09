@@ -15,19 +15,23 @@ int main(int argc, char *argv[])
     std::thread CPU(Machine_loop);
 
     Debug_init();
-    std::thread Debug(Debug_loop);
+    Debug_loop();
 
-    while (true)
-    {
-        // emulator_loop();
-        if (Panel_close() > 0)
-        {
-            break;
-        }
-    }
+    // while (true)
+    // {
+    //     // emulator_loop();
+    //     if (Panel_close() > 0)
+    //     {
+    //         break;
+    //     }
+    // }
 
     Panel_destroy();
     Debug_destroy();
+
+    // Destroy the CPU thread
+    CPU.join();
+    Desenho.join();
 
     return EXIT_SUCCESS;
 }

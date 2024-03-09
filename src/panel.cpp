@@ -15,6 +15,8 @@ const float zoom = 1.5;
 const int WIDTH = 667 * zoom;
 const int HEIGHT = 600 * zoom;
 
+extern bool running;
+
 extern bool led_ACC[8]; // 8-bit "Acumulador" = Accumulator Register
 extern bool led_RD[8];  // 8-bit "Registrador de Dados" = Data Register
 extern bool led_RI[8];  // 8-bit "Registrador de Instrução" = Instruction Register
@@ -179,7 +181,7 @@ void Panel_init()
 void Panel_loop()
 {
 
-    while (true)
+    while (running)
     {
         Panel_LEDBIT(597, 66, 12, led_RE); // Endereço de memória
 
@@ -200,6 +202,8 @@ void Panel_loop()
         Panel_refreshButton(btn_mode, 6);
 
         SDL_RenderPresent(renderer);
+
+        Panel_close();
 
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
@@ -351,6 +355,7 @@ int Panel_close()
     {
         if (windowEvent.type == SDL_QUIT)
         {
+            running = false;
             return 1;
         }
         else if (windowEvent.type == SDL_MOUSEBUTTONDOWN)

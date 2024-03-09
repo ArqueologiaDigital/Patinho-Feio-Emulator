@@ -1,3 +1,5 @@
 emulator.exe
 .vscode/
 SDL2.dll
+demo.exe
+ram.bin

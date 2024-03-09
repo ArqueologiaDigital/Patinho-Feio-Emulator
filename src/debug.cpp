@@ -1,99 +1,155 @@
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
-#include <stdio.h>
-#include <thread>
-#include <chrono>
-#include "machine.h"
+#include "imgui.h"
+#include "imgui_impl_dx9.h"
+#include "imgui_impl_win32.h"
+#include <d3d9.h>
+#include <tchar.h>
+#include <iostream>
+#include <windows.h>
 
-#define SCREEN_WIDTH 450
-#define SCREEN_HEIGHT 350
+#include "panel.h"
+#include "state.h"
+#include "machine.h"
+#include "debug.h"
+#include "gui.h"
+
+// Controller Emulation
+extern bool running;
+
+using namespace std;
+
 #define FONT_SIZE 20
 #define ELEMENT_PER_ROW 8
 #define SIZE 256
 
 extern byte RAM[RAM_SIZE];
 
-TTF_Font *font = NULL;
-SDL_Color color = {255, 255, 255};
-SDL_Renderer *renderer_debug;
-SDL_Window *window_debug;
-
-void render(SDL_Renderer *renderer, uint8_t *data)
+void openFileDialog(std::string &fileName)
 {
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL_RenderClear(renderer);
+    // common dialog box structure, setting all fields to 0 is important
+    OPENFILENAME ofn = {0};
+    TCHAR szFile[9600] = {0};
 
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = NULL; // <-- maybe needing HANDLE here ?
+    ofn.lpstrFile = szFile;
+    ofn.nMaxFile = sizeof(szFile);
+    ofn.lpstrFilter = _T("json files\0*.json\0");
+    ofn.nFilterIndex = 1;
+    ofn.lpstrFileTitle = NULL;
+    ofn.nMaxFileTitle = 0;
+    ofn.lpstrInitialDir = NULL;
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
 
+    if (GetOpenFileName(&ofn) == TRUE)
+    {
+        std::cout << "file selected : " << ofn.lpstrFile << std::endl;
+        fileName = ofn.lpstrFile;
+    }
+}
+
+void Debug_Hexdump(uint8_t *data)
+{
     int ROWS = SIZE / 16;
 
     for (int row = 0; row < ROWS; row++)
     {
+        ImGui::TableNextRow();
+
         int address = row * 16;
         char adr[64];
-        sprintf(adr, "%04X: ", address);
 
+        // Address
+        sprintf(adr, "%04X: ", address);
+        ImGui::TableSetColumnIndex(0);
+        ImGui::Text(adr);
+        adr[0] = '\0';
+
+        // Data in Hex
         for (int i = 0; i < ELEMENT_PER_ROW; i++)
         {
             sprintf(adr + strlen(adr), "%02X%02X ", data[address + i * 2], data[address + i * 2 + 1]);
         }
+        ImGui::TableSetColumnIndex(1);
+        ImGui::Text(adr);
 
-        SDL_Surface *surface = TTF_RenderText_Solid(font, adr, color);
-        SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
-
-        SDL_Rect dstRect;
-        dstRect.x = FONT_SIZE;
-        dstRect.y = (row * FONT_SIZE) + 10;
-        dstRect.w = surface->w;
-        dstRect.h = surface->h;
-
-        SDL_RenderCopy(renderer, texture, NULL, &dstRect);
-        SDL_DestroyTexture(texture);
-        SDL_FreeSurface(surface);
+        // Data in ASCII
+        adr[0] = '\0';
+        for (int i = 0; i < ELEMENT_PER_ROW * 2; i++)
+        {
+            char c = data[address + i];
+            if (c < 32 || c > 126)
+            {
+                c = '.';
+            }
+            sprintf(adr + strlen(adr), "%c", c);
+        }
+        ImGui::TableSetColumnIndex(2);
+        ImGui::Text(adr);
     }
-
-    SDL_RenderPresent(renderer);
 }
 
 int Debug_init()
 {
-    window_debug = SDL_CreateWindow("Hexdump", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
-    renderer_debug = SDL_CreateRenderer(window_debug, -1, SDL_RENDERER_ACCELERATED);
-
-    if (TTF_Init() < 0)
-    {
-        printf("TTF_Init: %s\n", TTF_GetError());
-        return 1;
-    }
-
-    font = TTF_OpenFont("assets/JoganSoft.ttf", 18);
-
-    if (font == NULL)
-    {
-        printf("TTF_OpenFont: %s\n", TTF_GetError());
-        return 1;
-    }
-
+    GUI_init();
     return 0;
 }
 
 void Debug_loop()
 {
-    while (true)
+
+    while (running)
     {
-        render(renderer_debug, RAM);
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        GUI_NewFrame();
+
+        ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
+        if (ImGui::BeginTabBar("MyTabBar", tab_bar_flags))
+        {
+            if (ImGui::BeginTabItem("Geral"))
+            {
+                ImGui::Text("This is some useful text."); // Display some text (you can use a format strings too)
+
+                if (ImGui::Button("Button")) // Buttons return true when clicked (most widgets return true when edited/activated)
+                {
+                    std::string fileName;
+                    openFileDialog(fileName);
+                    cout << fileName << endl;
+                }
+                ImGui::SameLine();
+                ImGui::Text("counter = %d", 0);
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("Memoria RAM"))
+            {
+
+                if (ImGui::BeginTable("table1", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_NoBordersInBodyUntilResize))
+                {
+                    // We could also set ImGuiTableFlags_SizingFixedFit on the table and all columns will default to ImGuiTableColumnFlags_WidthFixed.
+                    ImGui::TableSetupColumn("Endereço", ImGuiTableColumnFlags_WidthFixed, 100.0f); // Default to 100.0f
+                    ImGui::TableSetupColumn("Dado", ImGuiTableColumnFlags_WidthFixed, 400.0f);     // Default to 400.0f
+                    ImGui::TableSetupColumn("ASCII", ImGuiTableColumnFlags_WidthFixed, 400.0f);    // Default to auto
+                    ImGui::TableHeadersRow();
+
+                    Debug_Hexdump(RAM);
+
+                    ImGui::EndTable();
+                }
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("Cucumber"))
+            {
+                ImGui::Text("This is the Cucumber tab!\nblah blah blah blah blah");
+                ImGui::EndTabItem();
+            }
+            ImGui::EndTabBar();
+        }
+
+        GUI_Render();
     }
 }
 
 void Debug_destroy()
 {
-    SDL_DestroyRenderer(renderer_debug);
-    SDL_DestroyWindow(window_debug);
-    SDL_Quit();
-
-    TTF_CloseFont(font);
-    TTF_Quit();
+    GUI_Destroy();
 }
 
 const char *Debug_get_mnemonic(int opcode)
@@ -210,3 +266,4 @@ const char *Debug_get_mnemonic(int opcode)
         }
     }
 }
+// Helper functions

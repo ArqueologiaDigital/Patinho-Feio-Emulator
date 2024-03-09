@@ -4,11 +4,13 @@
 #include <bitset>
 #include "state.h"
 #include "machine.h"
-#include "debug.h"
 
 using namespace std;
 
 #define DEBUG 0
+
+// Controller Emulation
+extern bool running;
 
 // Panel connections:
 extern bool led_ACC[8]; // 8-bit "Acumulador" = Accumulator Register
@@ -1185,6 +1187,7 @@ void run_one_instruction()
 
 void emulator_loop()
 {
+
     read_inputs();
 
     if (!_PARADO)
@@ -1196,9 +1199,6 @@ void emulator_loop()
     {
         PARADO(true);
     }
-
-    // while (Serial.available())
-    //     printer_writeByte(Serial.read());
 }
 
 void read_inputs()
@@ -1315,11 +1315,16 @@ void Machine_setup()
     }
     reset_CPU();
     load_example_hardcoded_program();
+
+    // DUMP RAM in file
+    FILE *f = fopen("ram.bin", "wb");
+    fwrite(RAM, 1, RAM_SIZE, f);
+    fclose(f);
 }
 
 void Machine_loop()
 {
-    while (true)
+    while (running)
     {
         emulator_loop();
         std::this_thread::sleep_for(std::chrono::milliseconds(100));

@@ -4,10 +4,12 @@
 #include <bitset>
 #include "state.h"
 #include "machine.h"
+#include "debug.h"
+#include "interface.h"
 
 using namespace std;
 
-#define DEBUG 0
+#define DEBUG 1
 
 // Controller Emulation
 extern bool running;
@@ -28,44 +30,6 @@ extern button_t buttons[QTD_BUTTONS_GENERAL];
 extern button_t btn_address[QTD_BUTTONS_ADDRESS];
 extern button_t btn_mode[QTD_BUTTONS_MODE];
 
-// IO
-Interface::Interface()
-{
-    this->registrador = 0x00;
-    this->controle = false;
-    this->estado = READY;
-    this->pedido_de_interrupcao = false;
-    this->permite_interrupcao = false;
-}
-
-void Interface::write(uint8_t value)
-{
-    this->registrador = value;
-}
-
-uint8_t Interface::read()
-{
-    return this->registrador;
-}
-
-Interface *canais[16];
-
-TeleType::TeleType()
-{
-}
-
-void TeleType::write(uint8_t value)
-{
-    this->registrador = value;
-
-    if (value == '\n')
-    {
-        printer_writeByte('\r');
-    }
-
-    printer_writeByte(value);
-}
-
 // CPU registers:
 
 extern byte RAM[RAM_SIZE];
@@ -77,6 +41,7 @@ int _RD;              //  8-bit "Registrador de Dados" = Data Register
 int _RI;              //  8-bit "Registrador de Instrução" = Instruction Register
 int _ACC;             //  8-bit "Acumulador" = Accumulator Register
 int _CI;              // 12-bit "Contador de Instrução" = Instruction Counter
+int old_CI;           // 12-bit "Contador de Instrução" = Instruction Counter
 int _DADOS_DO_PAINEL; // 12-bit of data provided by the user via panel toggle-switches
 
 int _FASE; // determines which cycle of a cpu instruction we are currently executing
@@ -96,6 +61,9 @@ bool enderecamento_sequencial = false;
 #define ENDERECAMENTO 4   // addressing mode
 #define ARMAZENAMENTO 5   // data write mode
 #define EXPOSICAO 6       // data read mode
+
+// IO
+extern InterfaceIO *canais[16];
 
 byte read_index_reg()
 {
@@ -608,7 +576,7 @@ void PUL_instruction()
 void TRE_instruction()
 {
     /* OPCODE: 0x99 */
-    // TRE="Troca conteudos de ACC e EXT"
+    // TRE="Troca conteúdos de ACC e EXT"
     //      Exchange the value of the accumulator with the ACC extension register
     byte value = _ACC;
     ACC(read_ram(EXTENSION_REG));
@@ -690,13 +658,16 @@ void PLAZ_instruction()
 void FNC_instruction(byte channel, byte function)
 {
     /* OPCODE: 0xCX 0x1X */
+    // FNC = "Função tipo c para dispositivo N"
     // Implement-me!
 }
 
 void SAL_instruction(byte channel, byte function)
 {
     /* OPCODE: 0xCX 0x2X */
-    // SAL="Salta"
+    // SAL = "Salta"
+    // SAL = Salto, tipo c para dispositivo N
+
     //     Skips a couple bytes if a condition is met
     bool skip = false;
     switch (function)
@@ -732,17 +703,31 @@ void SAL_instruction(byte channel, byte function)
 void ENTR_instruction(byte channel)
 {
     /* OPCODE: 0xCX 0x4X */
-    /* ENTR = "Input data from I/O device" */
+    /*
+    ENTR = "Input data from I/O device"
+    ENTR = "Entrada de dados, comando "C" do dispositivo "N"
+    */
     // TODO: handle multiple device channels: m_iodev_write_cb[channel](ACC);
     // Implement-me!
+
+    cout << "GETTING DATA FROM DEVICE " << endl;
+    if (canais[channel])
+    {
+        ACC(canais[channel]->read());
+    }
 }
 
 void SAI_instruction(byte channel)
 {
     /* OPCODE: 0xCX 0x8X */
-    /* SAI = "Output data to I/O device" */
+    /*
+    SAI = Saida de dados, comando "C" para dispositivo "N"
+    SAI = "Output data to I/O device"
+    */
     if (canais[channel])
+    {
         canais[channel]->write(_ACC);
+    }
 }
 
 void IO_instructions()
@@ -753,18 +738,22 @@ void IO_instructions()
     inc_CI();
     byte channel = opcode & 0x0F;
     byte function = value & 0x0F;
+
+#if DEBUG
+    cout << "DISPOSITIVO N: " << hex << (int)channel << ", INSTRUCAO: " << hex << (int)(value & 0xF0) << ", FNC: " << hex << (int)function << endl;
+#endif
     switch (value & 0xF0)
     {
-    case 0x10:
+    case 0x10: // FUNÇÃO TIPO C PARA DISPOSITIVO N
         FNC_instruction(channel, function);
         return;
-    case 0x20:
+    case 0x20: // SALTO, TIPO C PARA DISPOSITIVO N
         SAL_instruction(channel, function);
         return;
-    case 0x40:
+    case 0x40: // ENTRADA DE DADOS, COMANDO "C" DO DISPOSITIVO "N"
         ENTR_instruction(channel);
         return;
-    case 0x80:
+    case 0x80: // SAIDA DE DADOS, COMANDO "C" PARA DISPOSITIVO "N"
         SAI_instruction(channel);
         return;
     }
@@ -773,13 +762,53 @@ void IO_instructions()
 void SUS_instruction()
 {
     /* OPCODE: 0xEX */
-    // TODO: Implement-me!
+    // Subtrai trai 1 ou salta
+
+    unsigned int addr = (opcode & 0x0F) << 8 | read_ram(_CI);
+    inc_CI();
+
+    // se (END) = 0: (CI) = (CI) + 2
+    if (addr == 0x000)
+    {
+        cout << "E ZEROU" << endl;
+        CI(_CI + 2);
+    }
+    // SE (END) != 0: (END) = (END) - 1
+    else
+    {
+        write_ram(addr, read_ram(addr) - 1);
+    }
 }
 
 void PUG_instruction()
 {
     /* OPCODE: 0xFX */
-    // TODO: Implement-me!
+    // PUG = "Pula e guarda" : Pega o CI e salva na RAM, CI tem 12 bits e a memoria tem 8 bits, o CI vai ocupar duas posições subsequentes na memoria
+    // PUG = "Jump and save": Take the CI and save it in RAM, CI has 12 bits and the memory has 8 bits, the CI will occupy two subsequent positions in memory
+    // Read address
+    unsigned int addr = (opcode & 0x0F) << 8 | read_ram(_CI);
+    inc_CI();
+
+    // Read CI 8 bits first
+    unsigned int CIFirst = (_CI >> 8) & 0x0F;
+    write_ram(addr, CIFirst);
+
+    // Read CI 4 bits
+    unsigned int CISecond = _CI & 0xFF;
+    write_ram(addr + 1, CISecond);
+
+#if DEBUG
+    // Debug
+    // CI value
+    cout << "CI: " << hex << _CI << endl;
+    cout << "PUG: " << hex << (int)opcode << endl;
+    cout << "1 - Value: " << hex << CIFirst << " Addr: " << hex << addr << endl;
+    cout << "2 - Value: " << hex << CISecond << " Addr: " << hex << addr + 1 << endl;
+#endif
+    // Increment CI
+
+    CI(addr + 2);
+    //
 }
 
 void XOR_instruction()
@@ -827,7 +856,70 @@ void IND_instruction()
 
 void shift_rotate_instructions()
 {
-    // TODO: Implement-me!
+    // TODO: Verificar se está pegando o endereço correto, talvez esteja pegando a primeira palavra ao invés da segunda
+    unsigned int value = read_ram(_CI);
+
+    // Campo do código dos deslocamentos, 4bits
+    unsigned int code = (value & 0xF0) >> 4;
+
+    // Quantidade de "1" especifica o numero de deslocamentos, 4bits
+    unsigned int amount = (value & 0x0F);
+
+#if DEBUG
+    cout << "Shift/Rotate instruction: " << hex << (int)opcode << " " << (int)code << " " << (int)amount << endl;
+#endif
+
+    switch (code)
+    {
+    case 0b1000:
+        // Descola a direita com duplicação do bit de sinal
+        // TODO:  Implement-me!
+        cout << " NOT IMPLEMENTED YET" << endl;
+        break;
+    case 0b0000:
+        // Desloca a direita
+        // TODO:  Implement-me!
+        cout << " NOT IMPLEMENTED YET" << endl;
+        break;
+    case 0b0100:
+        // Desloca a esquerda
+        ACC(_ACC << amount);
+        inc_CI();
+        break;
+    case 0b0001:
+        // Desloca a direita com V
+        // TODO:  Implement-me!
+        cout << " NOT IMPLEMENTED YET" << endl;
+        break;
+    case 0b0101:
+        // Desloca a esquerda com V
+        // TODO:  Implement-me!
+        cout << " NOT IMPLEMENTED YET" << endl;
+        break;
+    case 0b0010:
+        // Rotaciona a direita
+        ACC((_ACC >> amount) | (_ACC << (8 - amount)));
+        inc_CI();
+        break;
+    case 0b0110:
+        // Rotaciona a esquerda
+        ACC((_ACC << amount) | (_ACC >> (8 - amount)));
+        inc_CI();
+        break;
+    case 0b0011:
+        // Rotaciona a direita com V
+        // TODO:  Implement-me!
+        cout << " NOT IMPLEMENTED YET" << endl;
+        break;
+    case 0b0111:
+        // Rotaciona a esquerda com V
+        // TODO:  Implement-me!
+        cout << " NOT IMPLEMENTED YET" << endl;
+        break;
+    default:
+        cout << "Invalid shift/rotate instruction" << endl;
+        break;
+    }
 }
 /*
  * ############################## END ##################################
@@ -861,9 +953,11 @@ void load_example_hardcoded_program()
     RAM[0x18] = 0x9D; // 018: 9D     PARE                // Halt the CPU. Can be restarted by manually pushing the PARTIDA (startup) panel button.
     RAM[0x19] = 0x00; // 019: 00 06  PLA /006            // If you restart the CPU, this is the next instruction, which jumps straight back to the routine entry point, effectively causing the whole program to run once again.
     RAM[0x1A] = 0x06;
-    // RAM[0x1B] = 0xF2; // 01B: F2     DB -14              // This is the 2's complement for -len(string)
-    RAM[0x1B] = 0xEF; // 01B: 0E     DB -14              // This is the 2's complement for -len(string)
-    RAM[0x1C] = 'P';  // 01C: "PATINHO FEIO\n"           // This is the string.
+    // RECOMEÇA O PROGRAMA
+
+    RAM[0x1B] = 0xEF; // 01B: 0E     DB -14              // This is the 2's complement for -len(string) // RAM[0x1B] = 0xF2; // 01B: F2     DB -14              // This is the 2's complement for -len(string)
+    // VALOR A SER DECREMENTADO
+    RAM[0x1C] = 'P'; // 01C: "PATINHO FEIO\n"           // This is the string.
     RAM[0x1D] = 'A';
     RAM[0x1E] = 'T';
     RAM[0x1F] = 'I';
@@ -880,58 +974,12 @@ void load_example_hardcoded_program()
     RAM[0x2A] = '!';
     RAM[0x2B] = 0x0D;
     RAM[0x2C] = 0x0A;
+    // STRING
 
     // Entry point:
     CI(0x06);
 }
 
-/*
- * ###################### PRINTING TO THE TELETYPE #####################
- */
-void printer_writeByte(char c)
-{
-    cout << c;
-}
-
-#define INIT_PRINTER_DEFAULTS '@'
-#define BOLD 'E'
-#define LEFT_MARGIN 'l'
-#define RIGHT_MARGIN 'Q'
-
-void escape_code(char code)
-{
-    printer_writeByte(27);
-    printer_writeByte(code);
-}
-
-void set_immediate_print_mode()
-{
-    escape_code('i');
-    printer_writeByte(1);
-}
-
-void left_margin(char n_chars)
-{
-    escape_code(LEFT_MARGIN);
-    printer_writeByte(n_chars);
-}
-
-void right_margin(char n_chars)
-{
-    escape_code(RIGHT_MARGIN);
-    printer_writeByte(n_chars);
-}
-
-void printer_writeString(char *str)
-{
-    for (char *ptr = str; *ptr; ptr++)
-    {
-        printer_writeByte(*ptr);
-    }
-}
-/*
- * ################################ END ##################################
- */
 void reset_CPU()
 {
     VAI_UM(false);
@@ -1001,7 +1049,7 @@ void partida()
 void run_one_instruction()
 {
     opcode = read_ram(_CI);
-
+    old_CI = _CI;
     RI(opcode); // para mostrar o opcode no painel
 
     if (scheduled_IND_bit_reset)
@@ -1010,13 +1058,14 @@ void run_one_instruction()
     if (indirect_addressing)
         scheduled_IND_bit_reset = true;
 
+        // DEBUG
+        // printf("CI: %04x OPCODE: %04x, Mascarado: %04x \n", _CI, opcode, opcode & 0xF0);
+
 #if DEBUG
+    printf("\n");
     printf("Executing instruction: %s\n", Debug_get_mnemonic(opcode));
+    printf("CI: %04x OPCODE: %02x, Mascarado: %02x\n", old_CI, opcode, opcode & 0xF0);
 #endif
-
-    // DEBUG
-    // printf("CI: %04x OPCODE: %04x, Mascarado: %04x \n", _CI, opcode, opcode & 0xF0);
-
     inc_CI();
 
     switch (opcode)
@@ -1188,8 +1237,6 @@ void run_one_instruction()
 void emulator_loop()
 {
 
-    read_inputs();
-
     if (!_PARADO)
     {
         run_one_instruction();
@@ -1271,41 +1318,21 @@ void read_inputs()
     }
 }
 
-void initial_printer_commands()
-{
-    escape_code(INIT_PRINTER_DEFAULTS);
-
-    // set unit of line spacing to the minimum vertical increment necessary
-    //...
-
-    // set the printing area
-    left_margin(5);
-    right_margin(5);
-
-    // select the font
-    escape_code(BOLD);
-
-    // set the printing position
-    //...
-
-    // send one line's print data + CR + LF
-    printer_writeString("IMPRESSORA OK\r\n");
-
-    // end page with FF
-    //... escape_code(FORM_FEED);
-
-    // end printing with '@'
-    // escape_code(INIT_PRINTER_DEFAULTS);
-}
-
 void Machine_setup()
 {
     for (int c = 0; c < 16; c++)
     {
         canais[c] = NULL;
     }
-
-    canais[0xA] = new TeleType();
+    canais[0x0] = nullptr;        // Painel
+    canais[0x5] = nullptr;        // Impressora HP-2607A
+    canais[0x6] = nullptr;        // 8bits duplex
+    canais[0x7] = nullptr;        // 8bits duplex
+    canais[0x8] = nullptr;        // Perfuradora rapida de Fita de papel
+    canais[0x9] = nullptr;        // Leitora de Cartões
+    canais[0xA] = new TeleType(); // DECWriter III (Digital Equipment Corp.)
+    canais[0xB] = new TeleType(); // TTY (Teletype da TeleType corp.)
+    canais[0xE] = nullptr;        // Leitora de Fita de papel
 
     initial_printer_commands();
 
@@ -1314,20 +1341,57 @@ void Machine_setup()
         RAM[i] = 0;
     }
     reset_CPU();
-    load_example_hardcoded_program();
+    // load_example_hardcoded_program();
 
-    // DUMP RAM in file
-    FILE *f = fopen("ram.bin", "wb");
-    fwrite(RAM, 1, RAM_SIZE, f);
+    //     // DUMP RAM in file
+    //     FILE *f = fopen("ram.bin", "wb");
+    //     fwrite(RAM, 1, RAM_SIZE, f);
+    //     fclose(f);
+
+    // Load Program into RAM
+    // FILE *f = fopen("bin/hello.bin", "rb");
+    FILE *f = fopen("bin/prog.bin", "rb");
+    if (f == NULL)
+    {
+        printf("Error: Could not open file\n");
+        return;
+    }
+
+    unsigned char buffer[RAM_SIZE];
+    for (int i = 0; i < RAM_SIZE; i++)
+    {
+        buffer[i] = 0;
+    }
+
+    fread(buffer, 1, RAM_SIZE, f);
     fclose(f);
+
+    // int offset = 0x03;
+    int offset = 0xE00;
+    for (int i = offset; i < RAM_SIZE; i++)
+    {
+        RAM[i] = buffer[i - offset];
+    }
+
+    CI(0xE00);
+    // CI(0x06);
 }
 
-void Machine_loop()
+void Machine_ControlLoop()
+{
+    while (running)
+    {
+        read_inputs();
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+}
+
+void Machine_EmulationLoop()
 {
     while (running)
     {
         emulator_loop();
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
         // std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 }

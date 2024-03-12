@@ -12,7 +12,8 @@ int main(int argc, char *argv[])
     std::thread Desenho(Panel_loop);
 
     Machine_setup();
-    std::thread CPU(Machine_loop);
+    std::thread CPU(Machine_EmulationLoop);
+    std::thread CONTROL(Machine_ControlLoop);
 
     Debug_init();
     Debug_loop();
@@ -31,6 +32,7 @@ int main(int argc, char *argv[])
 
     // Destroy the CPU thread
     CPU.join();
+    CONTROL.join();
     Desenho.join();
 
     return EXIT_SUCCESS;

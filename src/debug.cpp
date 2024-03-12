@@ -15,11 +15,13 @@
 // Controller Emulation
 extern bool running;
 
+extern int _CI;
+extern int old_CI;
+
 using namespace std;
 
 #define FONT_SIZE 20
 #define ELEMENT_PER_ROW 8
-#define SIZE 256
 
 extern byte RAM[RAM_SIZE];
 
@@ -43,13 +45,13 @@ void openFileDialog(std::string &fileName)
     if (GetOpenFileName(&ofn) == TRUE)
     {
         std::cout << "file selected : " << ofn.lpstrFile << std::endl;
-        fileName = ofn.lpstrFile;
+        // fileName = ofn.lpstrFile;
     }
 }
 
 void Debug_Hexdump(uint8_t *data)
 {
-    int ROWS = SIZE / 16;
+    int ROWS = RAM_SIZE / 16;
 
     for (int row = 0; row < ROWS; row++)
     {
@@ -65,12 +67,28 @@ void Debug_Hexdump(uint8_t *data)
         adr[0] = '\0';
 
         // Data in Hex
-        for (int i = 0; i < ELEMENT_PER_ROW; i++)
+        for (int i = 0; i < ELEMENT_PER_ROW * 2; i++)
         {
-            sprintf(adr + strlen(adr), "%02X%02X ", data[address + i * 2], data[address + i * 2 + 1]);
+
+            ImGui::TableSetColumnIndex(i + 1);
+            ImGui::Text("%02X", data[address + i]);
+
+            if (old_CI == address + i)
+            {
+                ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, IM_COL32(255, 0, 0, 50));
+            }
+
+            if (_CI == address + i)
+            {
+                ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, IM_COL32(255, 0, 0, 255));
+            }
+
+            // sprintf(adr + strlen(adr), "%02X%02X ", data[address + i * 2], data[address + i * 2 + 1]);
+
+            adr[0] = '\0';
         }
-        ImGui::TableSetColumnIndex(1);
-        ImGui::Text(adr);
+        // ImGui::TableSetColumnIndex(1);
+        // ImGui::Text(adr);
 
         // Data in ASCII
         adr[0] = '\0';
@@ -83,7 +101,7 @@ void Debug_Hexdump(uint8_t *data)
             }
             sprintf(adr + strlen(adr), "%c", c);
         }
-        ImGui::TableSetColumnIndex(2);
+        ImGui::TableSetColumnIndex(17);
         ImGui::Text(adr);
     }
 }
@@ -121,18 +139,26 @@ void Debug_loop()
             if (ImGui::BeginTabItem("Memoria RAM"))
             {
 
-                if (ImGui::BeginTable("table1", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_NoBordersInBodyUntilResize))
+                if (ImGui::BeginTable("table1", 18, ImGuiTableFlags_Borders | ImGuiTableFlags_NoBordersInBodyUntilResize))
                 {
                     // We could also set ImGuiTableFlags_SizingFixedFit on the table and all columns will default to ImGuiTableColumnFlags_WidthFixed.
                     ImGui::TableSetupColumn("Endereço", ImGuiTableColumnFlags_WidthFixed, 100.0f); // Default to 100.0f
-                    ImGui::TableSetupColumn("Dado", ImGuiTableColumnFlags_WidthFixed, 400.0f);     // Default to 400.0f
-                    ImGui::TableSetupColumn("ASCII", ImGuiTableColumnFlags_WidthFixed, 400.0f);    // Default to auto
+                    for (int i = 0; i < 16; i++)
+                    {
+                        char colName[64];
+                        sprintf(colName, "%02X", i);
+                        ImGui::TableSetupColumn(colName, ImGuiTableColumnFlags_WidthFixed, 25.0f); // Default to auto
+                    }
+                    ImGui::TableSetupColumn("ASCII", ImGuiTableColumnFlags_WidthFixed, 400.0f); // Default to auto
                     ImGui::TableHeadersRow();
 
                     Debug_Hexdump(RAM);
 
                     ImGui::EndTable();
                 }
+                // Show CI and RAM[CI] in Hex
+                ImGui::Text("CI = %04X , RAM[CI] = %02X", _CI, RAM[_CI]);
+
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Cucumber"))

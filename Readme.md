@@ -1,5 +1,10 @@
 # Patinho Feio Tools
 
+🚧 Projeto em construção 🚧
+
+Este é um emulador / Dev tools feito para o patinho feio.
+A intenção é você poder executar, debugar e criar programas para o patinho feio.
+
 ## CONTROLES DE FLUXOS
 
 | CODINOME        | DESCRICAO                                                                        | LUGAR NO ARRAY |
@@ -31,6 +36,7 @@
 | PUG       | 0xF0     |     1      | Pula e guarda                              |                              | 2          |
 | CARI      | OxDA     |     1      | Carrega imediato                           | Adiciona valor ao acumulador | 2          |
 | CMP1      | 0x82     |     0      | Completa 1 no acumulador e limpa V         |                              | 2          |
+
 | SH/RT
 
 ### REFERENCIAS
